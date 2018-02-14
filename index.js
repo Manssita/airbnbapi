@@ -91,30 +91,47 @@ app.post('/api/user/log_in', function (req, res) {
 
 });
 
-// page profil
-app.get('/api/user/:id', function(req, res){
-    var id = req.params.id;
+function tokenIsFound(req, res, next) {
     var autho = req.headers.authorization;
-    User.find({_id : id}, function(err, userFind) {
-        var check = "Bearer "+ userFind[0].token;
-        if(check === autho) {
-            res.json({
-                "_id": userFind[0]._id,
-                "account": {
-                    "username": userFind[0].account.username,
-                    "biography": userFind[0].account.biography
-                }
-            })
-        }
-        else {
-            res.status(401).json({
-                "error": {
-                  "code": 9473248,
-                  "message": "Invalid token"
-                }
-              })
-        }
-    });
+    if (autho) {
+        req.autho = autho;
+        next();
+    } else {
+        res.json({
+            "error": {
+              "code": 9473248,
+              "message": "Invalid token"
+            }
+          });
+    }
+}
+
+// page profil
+app.get('/api/user/:id', tokenIsFound, function(req, res){
+        var autho = req.autho.split(' ');
+        var popAutho = autho.pop();
+        User.findOne({token : popAutho}, function(err, user) {
+            if(user){
+                User.findOne({_id : req.params.id}, function(err, userFind) {
+                    res.json({
+                        "_id": userFind._id,
+                        "account": {
+                            "username": userFind.account.username,
+                            "biography": userFind.account.biography
+                        }
+                    })
+                });
+            }
+            else {
+                res.json({
+                    "error": {
+                      "code": 9473248,
+                      "message": "Invalid token"
+                    }
+                  })
+            }
+        })
+    
 });
 
 app.get('/', function(req, res){
